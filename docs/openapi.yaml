@@ -1,0 +1,222 @@
+openapi: 3.0.0
+info:
+  title: API de Empréstimos Angar
+  description: |
+    ## Visão Geral
+    API para integração com sistemas parceiros, permitindo o envio de propostas de empréstimo pessoal 
+    e notificação de clientes via WhatsApp. A autenticação é feita via Bearer Token (JWT).
+
+    ---
+
+    ## Webhook de Notificação de Status
+    Após o cliente final interagir com a proposta (aceitando ou recusando), nossa API notificará o sistema parceiro enviando uma requisição `HTTP POST` para a `webhook_url` fornecida na criação da proposta.
+
+    ### Lógica de Segurança (Verificação de Assinatura)
+    Para garantir que o parceiro possa verificar a autenticidade da chamada do webhook, incluiremos um cabeçalho `X-Angar-Signature` em cada requisição.
+
+    1.  **Chave Secreta (`key_angar`):** Durante o processo de onboarding, uma chave secreta (`key_angar`) será gerada e compartilhada com o parceiro de forma segura.
+    2.  **Geração da Assinatura:** A assinatura é um hash **HMAC-SHA256**, gerado usando a `key_angar` como chave e o corpo (payload) da requisição do webhook como mensagem. O resultado é codificado em hexadecimal.
+    3.  **Verificação pelo Parceiro:** Ao receber a notificação, o parceiro deve calcular sua própria assinatura usando o mesmo método (sua `key_angar` e o corpo da requisição recebida). A chamada deve ser considerada válida somente se a assinatura calculada for idêntica à assinatura no cabeçalho `X-Angar-Signature`.
+
+    **Exemplo em Pseudocódigo para o Parceiro:**
+    ```
+    key_angar = 'sua_chave_secreta_fornecida_pela_angar'
+    payload_recebido = corpo_da_requisicao_http
+    assinatura_recebida = cabecalho['X-Angar-Signature']
+
+    assinatura_calculada = hmac_sha256(key=key_angar, message=payload_recebido).hex()
+
+    if (assinatura_calculada == assinatura_recebida):
+      // Processo válido
+    else:
+      // Rejeitar, a requisição é inválida ou maliciosa
+    ```
+  version: 1.4.0
+  contact:
+    name: Suporte Técnico Angar
+    email: dev@angar.com.br
+
+servers:
+  - url: https://api.angar.com.br/v1
+    description: Servidor de Produção
+  - url: https://sandbox.api.angar.com.br/v1
+    description: Servidor de Sandbox para testes
+
+# Componentes reutilizáveis
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        client_id: { type: string, description: "ID do cliente parceiro fornecido pela Angar." }
+        client_secret: { type: string, description: "Senha secreta do cliente parceiro." }
+      required: [client_id, client_secret]
+      example: { client_id: "parceiro_abc_123", client_secret: "dK$!s#@j9sA*d(s@D*j" }
+    LoginResponse:
+      type: object
+      properties:
+        access_token: { type: string, description: "Token JWT para ser usado nas requisições subsequentes." }
+        token_type: { type: string, description: "Tipo do token." }
+        expires_in: { type: integer, description: "Tempo de vida do token em segundos." }
+      example: { access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", token_type: "Bearer", expires_in: 3600 }
+    ErrorResponse:
+      type: object
+      properties:
+        error_code: { type: string, description: "Um código único para o tipo de erro." }
+        message: { type: string, description: "Uma mensagem clara descrevendo o erro." }
+        details: { type: array, items: { type: string }, description: "(Opcional) Detalhes adicionais, como campos inválidos." }
+      required: [error_code, message]
+      example: { error_code: "INVALID_FIELD", message: "O campo 'cliente.whatsapp' está em um formato inválido.", details: ["O número deve seguir o padrão E.164, como '5511987654321'."] }
+    WebhookPayload:
+      type: object
+      description: Payload enviado para a webhook_url do parceiro.
+      properties:
+        id_proposta_angar: { type: string, description: "ID da proposta em nosso sistema (corresponde ao retornado na criação)." }
+        id_proposta_parceiro: { type: string, description: "ID da proposta no sistema do parceiro (o mesmo que foi enviado na criação)." }
+        status: { type: string, description: "O novo status da proposta.", enum: [CLIENTE_ACEITOU, CLIENTE_RECUSOU, ERRO_NOTIFICACAO] }
+        timestamp: { type: string, format: date-time, description: "Data e hora em que o evento ocorreu (formato ISO 8601)." }
+        detalhes: { type: string, description: "Mensagem opcional com detalhes adicionais, principalmente em caso de erro." }
+      required: [id_proposta_angar, id_proposta_parceiro, status, timestamp]
+      example: { id_proposta_angar: "ANG-1c7b82d3-a4e5-4f6g-8h9i-j0k1l2m3n4o5", id_proposta_parceiro: "PROP-XYZ-9876", status: "CLIENTE_ACEITOU", timestamp: "2025-11-20T14:30:00Z", detalhes: "O cliente confirmou a proposta com sucesso." }
+
+    Simulacao:
+      type: object
+      properties:
+        valores:
+          type: object
+          properties:
+            solicitado: { type: number, format: float, example: 1492.63 }
+            iof: { type: number, format: float, example: 48.19 }
+            principal: { type: number, format: float, example: 1540.82 }
+            parcela: { type: number, format: float, example: 156.84 }
+            liquido: { type: number, format: float, example: 1492.63 }
+            bruto: { type: number, format: float, example: 3764.16 }
+        taxas:
+          type: object
+          properties:
+            cet_am: { type: number, format: float, description: "Custo Efetivo Total (ao mês)", example: 8.4000 }
+            cet_aa: { type: number, format: float, description: "Custo Efetivo Total (ao ano)", example: 163.1100 }
+        prazos:
+          type: object
+          properties:
+            total_parcelas: { type: integer, example: 24 }
+            primeiro_vencimento: { type: string, format: date, description: "Data no formato AAAA-MM-DD", example: "2026-01-15" }
+            ultimo_vencimento: { type: string, format: date, description: "Data no formato AAAA-MM-DD", example: "2027-12-15" }
+
+    PropostaRequest:
+      type: object
+      properties:
+        id_proposta_parceiro: { type: string, description: "ID único da proposta no sistema do parceiro." }
+        cliente:
+          type: object
+          properties:
+            nome: { type: string, example: "Maria Oliveira" }
+            cpf: { type: string, description: "CPF do cliente no formato XXX.XXX.XXX-XX.", example: "123.456.789-00" }
+            whatsapp: { type: string, description: "Número do WhatsApp do cliente (formato E.164).", example: "5511987654321" }
+          required: [nome, cpf, whatsapp]
+        simulacao:
+          $ref: '#/components/schemas/Simulacao'
+        webhook_url: { type: string, format: uri, description: "URL do webhook do parceiro para receber atualizações de status.", example: "https://parceiro.com/webhooks/angar" }
+      required:
+        - id_proposta_parceiro
+        - cliente
+        - simulacao
+        - webhook_url
+      example:
+        id_proposta_parceiro: "PROP-XYZ-9876"
+        cliente:
+          nome: "Maria Oliveira"
+          cpf: "123.456.789-00"
+          whatsapp: "5511987654321"
+        simulacao:
+          valores:
+            solicitado: 1492.63
+            iof: 48.19
+            principal: 1540.82
+            parcela: 156.84
+            liquido: 1492.63
+            bruto: 3764.16
+          taxas:
+            cet_am: 8.40
+            cet_aa: 163.11
+          prazos:
+            total_parcelas: 24
+            primeiro_vencimento: "2026-01-15"
+            ultimo_vencimento: "2027-12-15"
+        webhook_url: "https://parceiro.com/webhooks/angar"
+
+    PropostaResponse:
+      type: object
+      properties:
+        status: { type: string, description: "Status do processamento da requisição." }
+        id_proposta_angar: { type: string, description: "ID único da proposta em nosso sistema para rastreamento." }
+      example: { status: "proposta_recebida_e_notificacao_enviada", id_proposta_angar: "ANG-1c7b82d3-a4e5-4f6g-8h9i-j0k1l2m3n4o5" }
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Para obter o token, utilize o endpoint `/login`. Em seguida, insira o token no cabeçalho `Authorization` no formato `Bearer {token}`.
+
+security:
+  - BearerAuth: []
+
+# Definição dos caminhos (endpoints) da API
+paths:
+  /login:
+    post:
+      summary: Autentica o parceiro e retorna um token de acesso
+      tags: [Autenticação]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Autenticação bem-sucedida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401':
+          description: Credenciais inválidas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example: { error_code: "INVALID_CREDENTIALS", message: "client_id ou client_secret inválidos." }
+
+  /propostas:
+    post:
+      summary: Recebe uma nova proposta de empréstimo e envia a notificação ao cliente
+      tags: [Propostas]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PropostaRequest' }
+      responses:
+        '202':
+          description: Proposta recebida e aceita para processamento.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropostaResponse' }
+        '400':
+          description: Requisição inválida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example: { error_code: "BAD_REQUEST", message: "A requisição contém dados inválidos.", details: ["O campo 'simulacao.valores.parcela' é obrigatório."] }
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example: { error_code: "UNAUTHORIZED", message: "Token de acesso ausente ou inválido." }
+        '500':
+          description: Erro interno no servidor.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example: { error_code: "INTERNAL_SERVER_ERROR", message: "Ocorreu um erro inesperado. Nossa equipe já foi notificada." }
