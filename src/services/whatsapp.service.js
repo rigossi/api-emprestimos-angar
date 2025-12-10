@@ -14,12 +14,12 @@ class WhatsAppService {
       
       // Se estiver em modo de teste, simula o envio
       if (MODO_TESTE) {
-        console.log('🧪 [MODO TESTE] Simulando envio de mensagem WhatsApp');
-        console.log('📱 Destinatário:', cliente.whatsapp);
-        console.log('👤 Cliente:', cliente.nome);
-        console.log('💰 Valor:', `R$ ${simulacao.valores.solicitado.toFixed(2)}`);
-        console.log('🔗 Link:', linkConfirmacao);
-        console.log('📊 Dados completos:', JSON.stringify(proposta, null, 2));
+        console.log('[MODO TESTE] Simulando envio de mensagem WhatsApp');
+        console.log('Destinatario:', cliente.whatsapp);
+        console.log('Cliente:', cliente.nome);
+        console.log('Valor:', `R$ ${simulacao.valores.solicitado.toFixed(2)}`);
+        console.log('Link:', linkConfirmacao);
+        console.log('Dados completos:', JSON.stringify(proposta, null, 2));
         
         return {
           success: true,
@@ -69,7 +69,7 @@ class WhatsAppService {
         }
       });
       
-      console.log('✅ Mensagem WhatsApp enviada:', response.data);
+      console.log('[WhatsApp] Mensagem enviada com sucesso:', response.data);
       
       return {
         success: true,
@@ -77,7 +77,7 @@ class WhatsAppService {
         mock: false
       };
     } catch (error) {
-      console.error('❌ Erro ao enviar mensagem WhatsApp:', error.response?.data || error.message);
+      console.error('[WhatsApp] Erro ao enviar mensagem:', error.response?.data || error.message);
       throw error;
     }
   }
