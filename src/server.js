@@ -47,8 +47,8 @@ app.use((err, req, res, next) => {
 
 // Iniciar servidor
 const server = app.listen(config.port, () => {
-  console.log(`🚀 Servidor rodando na porta ${config.port}`);
-  console.log(`📝 Ambiente: ${config.nodeEnv}`);
+  console.log(`[SERVER] Servidor rodando na porta ${config.port}`);
+  console.log(`[SERVER] Ambiente: ${config.nodeEnv}`);
 });
 
 module.exports = { app, server };
