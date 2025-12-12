@@ -46,6 +46,22 @@ class PropostaModel {
     }
     return result;
   }
+  
+  // Métodos síncronos para uso no controller de confirmação
+  buscarPorId(idPropostaAngar) {
+    return propostas.get(idPropostaAngar) || null;
+  }
+  
+  atualizarStatus(idPropostaAngar, novoStatus) {
+    const proposta = propostas.get(idPropostaAngar);
+    if (proposta) {
+      proposta.status = novoStatus;
+      proposta.updated_at = new Date().toISOString();
+      propostas.set(idPropostaAngar, proposta);
+      return proposta;
+    }
+    return null;
+  }
 }
 
 module.exports = new PropostaModel();

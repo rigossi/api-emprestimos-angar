@@ -4,6 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const config = require('./config');
 const routes = require('./routes');
+const confirmacaoRoutes = require('./routes/confirmacao.routes');
 
 const app = express();
 
@@ -16,6 +17,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rotas
 app.use('/v1', routes);
+
+// Rota pública de confirmação (sem autenticação)
+app.use('/confirmar', confirmacaoRoutes);
 
 // Rota de health check
 app.get('/health', (req, res) => {
