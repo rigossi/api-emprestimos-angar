@@ -50,9 +50,9 @@ class WhatsAppService {
             {
               type: 'body',
               parameters: [
-                { type: 'text', text: cliente.nome },
-                { type: 'text', text: `R$ ${simulacao.valores.solicitado.toFixed(2)}` },
-                { type: 'text', text: linkConfirmacao }
+                { type: 'text', text: cliente.nome }, // {{1}} Nome
+                { type: 'text', text: `R$ ${simulacao.valores.solicitado.toFixed(2)}` }, // {{2}} Valor
+                { type: 'text', text: `${simulacao.prazos.total_parcelas}x` } // {{3}} Parcelas (ex: "12x")
               ]
             }
           ]
