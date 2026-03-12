@@ -12,14 +12,24 @@ class WhatsAppService {
       // Gerar link de confirmação
       const linkConfirmacao = `${config.app.baseUrl}/confirmar/${id_proposta_angar}`;
       
+      // Formatar valores para exibição (pt-BR)
+      const valorSolicitado = simulacao.valores.solicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const valorBruto = simulacao.valores.bruto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const valorParcela = simulacao.valores.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const taxaMensal = simulacao.taxas.cet_am.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const qtdParcelas = simulacao.prazos.total_parcelas.toString();
+
       // Se estiver em modo de teste, simula o envio
       if (MODO_TESTE) {
         console.log('[MODO TESTE] Simulando envio de mensagem WhatsApp');
         console.log('Destinatario:', cliente.whatsapp);
         console.log('Cliente:', cliente.nome);
-        console.log('Valor:', `R$ ${simulacao.valores.solicitado.toFixed(2)}`);
+        console.log('Valor Solicitado:', `R$ ${valorSolicitado}`);
+        console.log('Parcelas:', qtdParcelas);
+        console.log('Taxa:', `${taxaMensal}%`);
+        console.log('Valor Bruto:', `R$ ${valorBruto}`);
+        console.log('Valor Parcela:', `R$ ${valorParcela}`);
         console.log('Link:', linkConfirmacao);
-        console.log('Dados completos:', JSON.stringify(proposta, null, 2));
         
         return {
           success: true,
@@ -30,8 +40,11 @@ class WhatsAppService {
           dados_enviados: {
             destinatario: cliente.whatsapp,
             nome: cliente.nome,
-            valor: simulacao.valores.solicitado,
-            link: linkConfirmacao
+            valor: valorSolicitado,
+            parcelas: qtdParcelas,
+            taxa: taxaMensal,
+            bruto: valorBruto,
+            valor_parcela: valorParcela
           }
         };
       }
@@ -51,8 +64,11 @@ class WhatsAppService {
               type: 'body',
               parameters: [
                 { type: 'text', text: cliente.nome }, // {{1}} Nome
-                { type: 'text', text: `R$ ${simulacao.valores.solicitado.toFixed(2)}` }, // {{2}} Valor
-                { type: 'text', text: `${simulacao.prazos.total_parcelas}x` } // {{3}} Parcelas (ex: "12x")
+                { type: 'text', text: valorSolicitado }, // {{2}} Valor Solicitado
+                { type: 'text', text: qtdParcelas }, // {{3}} Parcelas
+                { type: 'text', text: taxaMensal }, // {{4}} Taxa a.m.
+                { type: 'text', text: valorBruto }, // {{5}} Valor Bruto
+                { type: 'text', text: valorParcela } // {{6}} Valor Parcela
               ]
             }
           ]
