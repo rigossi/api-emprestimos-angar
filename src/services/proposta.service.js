@@ -12,6 +12,7 @@ class PropostaService {
       const proposta = {
         id_proposta_angar: idPropostaAngar,
         id_proposta_parceiro: propostaData.id_proposta_parceiro,
+        data_solicitacao: propostaData.data_solicitacao,
         client_id: clientId,
         cliente: propostaData.cliente,
         simulacao: propostaData.simulacao,
