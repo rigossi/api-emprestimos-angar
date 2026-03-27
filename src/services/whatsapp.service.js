@@ -7,16 +7,23 @@ const MODO_TESTE = process.env.WHATSAPP_MODO_TESTE === 'true';
 class WhatsAppService {
   async enviarNotificacao(proposta) {
     try {
-      const { cliente, simulacao, id_proposta_angar } = proposta;
+      const { cliente, simulacao, data_solicitacao, id_proposta_angar } = proposta;
       
-      // Gerar link de confirmação
-      const linkConfirmacao = `${config.app.baseUrl}/confirmar/${id_proposta_angar}`;
+      // Formatar datas (de YYYY-MM-DD para DD/MM/YYYY)
+      const formatarData = (dataStr) => {
+        if (!dataStr) return '';
+        const [ano, mes, dia] = dataStr.split('-');
+        return `${dia}/${mes}/${ano}`;
+      };
+      
+      const dataSolicitacaoFormatada = formatarData(data_solicitacao);
+      const dataLiberacaoFormatada = formatarData(simulacao.prazos.data_liberacao_estimada);
       
       // Formatar valores para exibição (pt-BR)
-      const valorSolicitado = simulacao.valores.solicitado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const valorBruto = simulacao.valores.bruto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const valorLiberado = simulacao.valores.liquido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const valorIof = simulacao.valores.iof.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const valorParcela = simulacao.valores.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const taxaMensal = simulacao.taxas.cet_am.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const taxaNominal = simulacao.taxas.nominal_am.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const qtdParcelas = simulacao.prazos.total_parcelas.toString();
 
       // Se estiver em modo de teste, simula o envio
@@ -24,12 +31,13 @@ class WhatsAppService {
         console.log('[MODO TESTE] Simulando envio de mensagem WhatsApp');
         console.log('Destinatario:', cliente.whatsapp);
         console.log('Cliente:', cliente.nome);
-        console.log('Valor Solicitado:', `R$ ${valorSolicitado}`);
-        console.log('Parcelas:', qtdParcelas);
-        console.log('Taxa:', `${taxaMensal}%`);
-        console.log('Valor Bruto:', `R$ ${valorBruto}`);
-        console.log('Valor Parcela:', `R$ ${valorParcela}`);
-        console.log('Link:', linkConfirmacao);
+        console.log('Data Solicitação:', dataSolicitacaoFormatada);
+        console.log('Valor Liberado:', `R$ ${valorLiberado}`);
+        console.log('Data Liberação:', dataLiberacaoFormatada);
+        console.log('Taxa Nominal:', `${taxaNominal}%`);
+        console.log('IOF:', `R$ ${valorIof}`);
+        console.log('Prazo:', `${qtdParcelas} meses`);
+        console.log('Parcelas mensais:', `R$ ${valorParcela}`);
         
         return {
           success: true,
@@ -40,10 +48,12 @@ class WhatsAppService {
           dados_enviados: {
             destinatario: cliente.whatsapp,
             nome: cliente.nome,
-            valor: valorSolicitado,
-            parcelas: qtdParcelas,
-            taxa: taxaMensal,
-            bruto: valorBruto,
+            data_solicitacao: dataSolicitacaoFormatada,
+            valor_liberado: valorLiberado,
+            data_liberacao: dataLiberacaoFormatada,
+            taxa_nominal: taxaNominal,
+            iof: valorIof,
+            prazo: qtdParcelas,
             valor_parcela: valorParcela
           }
         };
@@ -64,11 +74,13 @@ class WhatsAppService {
               type: 'body',
               parameters: [
                 { type: 'text', text: cliente.nome }, // {{1}} Nome
-                { type: 'text', text: valorSolicitado }, // {{2}} Valor Solicitado
-                { type: 'text', text: qtdParcelas }, // {{3}} Parcelas
-                { type: 'text', text: taxaMensal }, // {{4}} Taxa a.m.
-                { type: 'text', text: valorBruto }, // {{5}} Valor Bruto
-                { type: 'text', text: valorParcela } // {{6}} Valor Parcela
+                { type: 'text', text: dataSolicitacaoFormatada }, // {{2}} Data da solicitação
+                { type: 'text', text: valorLiberado }, // {{3}} Valor liberado
+                { type: 'text', text: dataLiberacaoFormatada }, // {{4}} Data de liberação
+                { type: 'text', text: taxaNominal }, // {{5}} Taxa nominal
+                { type: 'text', text: valorIof }, // {{6}} IOF
+                { type: 'text', text: qtdParcelas }, // {{7}} Prazo
+                { type: 'text', text: valorParcela } // {{8}} Parcelas mensais
               ]
             }
           ]
