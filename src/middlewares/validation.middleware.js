@@ -9,6 +9,7 @@ const loginSchema = Joi.object({
 // Schema de validação para proposta
 const propostaSchema = Joi.object({
   id_proposta_parceiro: Joi.string().required(),
+  data_solicitacao: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   cliente: Joi.object({
     nome: Joi.string().required(),
     cpf: Joi.string().pattern(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/).required(),
@@ -24,11 +25,13 @@ const propostaSchema = Joi.object({
       bruto: Joi.number().positive().required()
     }).required(),
     taxas: Joi.object({
+      nominal_am: Joi.number().min(0).required(),
       cet_am: Joi.number().min(0).required(),
       cet_aa: Joi.number().min(0).required()
     }).required(),
     prazos: Joi.object({
       total_parcelas: Joi.number().integer().positive().required(),
+      data_liberacao_estimada: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
       primeiro_vencimento: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
       ultimo_vencimento: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required()
     }).required()
